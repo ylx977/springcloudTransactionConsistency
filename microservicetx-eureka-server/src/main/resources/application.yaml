@@ -1,0 +1,28 @@
+server:
+  port: 10000
+eureka:
+  instance:
+    # 服务注册中心实例的主机名
+    hostname: localhost
+  client:
+    # 是否向服务注册中心注册自己
+    register-with-eureka: false
+    # 是否检索服务
+    fetch-registry: false
+    service-url:
+      defaultZone: http://${eureka.instance.hostname}:${server.port}/eureka/
+      #defaultZone: http://eureka-server:${server.port}/eureka/
+  server:
+    # 该机制是Eureka Server的自我保护机制,该机制会使注册中心所维护的实例不是很准确，在本地开发时，可以将该参数关闭以确保注册中心将不可用的实例正确删除
+    enable-self-preservation: false
+    # 清理无效节点的时间间隔(单位毫秒,默认60*1000)
+    eviction-interval-timer-in-ms: 30000
+security:
+  basic:
+    enabled: false
+  user:
+    password: 123456
+    name: admin
+spring:
+  profiles:
+    active: @spring.profiles.active@
