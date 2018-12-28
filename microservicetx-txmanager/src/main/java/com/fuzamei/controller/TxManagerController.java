@@ -73,25 +73,48 @@ public class TxManagerController {
         int serviceCount = Integer.parseInt(count);
         int index  = 0;
         Map<String, String> map;
+        //初始线程等待时间10ms
+        long initialWait = 10;
+        //最大等待时间
+        long totalWait = 6000;
+        //累积等待时间
+        long sumWait = 0;
         while(true){
-            if(index > 500){
-                return ResponseEnum.SUCCESS.getName();
-            }
             map = redisUtils.hgetAll(RedisPrefix.TX_GROUP + groupId);
+            log.info("查询redis{}次,当前需要等待时间{}ms,累计等待时间{}ms",index+1,initialWait,sumWait);
             if(map.size() < serviceCount){
                 index++;
             } else if(map.size() == serviceCount){
                 break;
-            } else{
+            }
+
+            for(Map.Entry<String,String> entry : map.entrySet()){
+                if(TypeEnum.NO.getName().equals(entry.getValue())){
+                    //只要有服务有一个是失败的直接通知所有服务回滚事务
+                    log.info("检测到有服务的事务已经失败,直接通知所有服务回滚事务");
+                    sendTypeToService(map,groupId,TypeEnum.NO.getName());
+                    return ResponseEnum.SUCCESS.getName();
+                }
+            }
+
+            //累计时间超时未获取满通知所有带事务的微服务挂了
+            if(sumWait > totalWait){
                 //如果超时还未获取全
+                log.info("tx-manager超时还未获取全所有事务信息");
                 sendTypeToService(map,groupId,TypeEnum.NO.getName());
                 return ResponseEnum.SUCCESS.getName();
             }
+
             try {
-                Thread.sleep(20);
+                //每次等待的时间都要加倍, 否则访问redis的轮询次数太多
+                Thread.sleep(initialWait);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+
+            //防止同频率反复查询redis，时间扩容因子
+            initialWait *= 1.5;
+            sumWait += initialWait;
         }
 
         boolean flag = true;

@@ -10,7 +10,7 @@ public class TimeOut {
     /**
      * 最大信息交换等待时间
      */
-    public static final int MAX_WAIT_EXCHANGE = 30;
+    public static final int MAX_WAIT_EXCHANGE = 5;
     /**
      * 最大信息交换等待时间单位
      */

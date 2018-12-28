@@ -7,6 +7,7 @@ import com.fuzamei.service.Eservice;
 import org.springframework.stereotype.Service;
 
 /**
+ * @author ylx
  * Created by ylx on 2018/12/25.
  */
 @Service
@@ -23,6 +24,12 @@ public class EserviceImpl implements Eservice {
     public boolean updateMoneye(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = emapper.updateMoneye(id, moneys, time);
-        return i > 0;
+        if(i == 0){
+            return false;
+        }
+
+        //todo 可做其它业务或调用其它微服务的事务
+
+        return true;
     }
 }

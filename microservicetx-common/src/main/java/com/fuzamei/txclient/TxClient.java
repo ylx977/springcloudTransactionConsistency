@@ -77,4 +77,16 @@ public class TxClient {
         }
         Exchanger<String> put = exchangerMap.put(txId, exchanger);
     }
+
+    /**
+     * 将exchanger从map中移除
+     * @param txId
+     * @return
+     */
+    public static void removeExchanger(String txId){
+        if(txId == null){
+            return;
+        }
+        Exchanger<String> put = exchangerMap.remove(txId);
+    }
 }

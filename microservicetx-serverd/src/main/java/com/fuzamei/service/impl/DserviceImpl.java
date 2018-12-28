@@ -24,6 +24,12 @@ public class DserviceImpl implements Dservice {
     public boolean updateMoneyd(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = dmapper.updateMoneyd(id, moneys, time);
-        return i > 0;
+        if(i == 0){
+            return false;
+        }
+
+        //todo 可做其它业务或调用其它微服务的事务
+
+        return true;
     }
 }

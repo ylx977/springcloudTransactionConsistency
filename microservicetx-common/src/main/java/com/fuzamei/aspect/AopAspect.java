@@ -22,6 +22,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /**
+ * @author ylx
  * Created by ylx on 2018/12/14.
  */
 @Aspect
@@ -102,6 +103,8 @@ public class AopAspect {
                 e.printStackTrace();
                 //出现异常则回滚事务
                 dataSourceTransactionManager.rollback(status);
+                //移除exchanger
+                TxClient.removeExchanger(groupId);
             }
         }
     }

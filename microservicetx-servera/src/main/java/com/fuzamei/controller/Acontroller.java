@@ -1,5 +1,6 @@
 package com.fuzamei.controller;
 
+import com.fuzamei.constants.TimeOut;
 import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.service.Aservice;
 import com.fuzamei.txclient.TxClient;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 import java.util.concurrent.Exchanger;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author ylx
@@ -46,18 +48,45 @@ public class Acontroller {
     }
 
 
+    /**
+     * 模拟线程之间通信接口1
+     * @param id
+     * @return
+     * @throws InterruptedException
+     */
     @PostMapping("/exchange1/{id}")
     public String exchange1(@PathVariable(value = "id") String id) throws InterruptedException {
         Exchanger<String> exchanger = new Exchanger<>();
         TxClient.putExchanger(id,exchanger);
-        String get = exchanger.exchange("GET");
+        String get = null;
+        try {
+            get = exchanger.exchange("GET", TimeOut.MAX_WAIT_EXCHANGE,TimeOut.MAX_WAIT_EXCHANGE_UNIT);
+        } catch (TimeoutException e) {
+            e.printStackTrace();
+            TxClient.removeExchanger(id);
+        }
         return get;
     }
 
+    /**
+     * 模拟线程之间通信接口2
+     * @param id
+     * @return
+     * @throws InterruptedException
+     */
     @PostMapping("/exchange2/{id}")
     public String exchange2(@PathVariable(value = "id") String id) throws InterruptedException {
         Exchanger<String> exchanger = TxClient.getExchanger(id);
-        String send = exchanger.exchange("SEND");
+        if(exchanger == null){
+            return "NO";
+        }
+        String send = null;
+        try {
+            send = exchanger.exchange("SEND", TimeOut.MAX_WAIT_EXCHANGE,TimeOut.MAX_WAIT_EXCHANGE_UNIT);
+        } catch (TimeoutException e) {
+            e.printStackTrace();
+            TxClient.removeExchanger(id);
+        }
         return send;
     }
 

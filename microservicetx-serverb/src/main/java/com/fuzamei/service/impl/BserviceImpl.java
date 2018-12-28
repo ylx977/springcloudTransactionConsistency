@@ -32,7 +32,12 @@ public class BserviceImpl implements Bservice {
     public boolean updateMoneyb(String id, Double moneys,String groupId) {
         long time = System.currentTimeMillis();
         int i = bmapper.updateMoneyb(id, moneys, time);
-        log.info(i+"");
-        return i > 0;
+        if(i == 0){
+            return false;
+        }
+
+        //todo 可做其它业务或调用其它服务的事务
+
+        return true;
     }
 }

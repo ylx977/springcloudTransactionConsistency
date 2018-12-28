@@ -29,11 +29,15 @@ public class CserviceImpl implements Cservice {
         long time = System.currentTimeMillis();
         int i = cmapper.updateMoneyc(id, moneys, time);
 
+        if(i == 0){
+            return false;
+        }
+
         //异步发送给服务d
         notifyService.distributeUpdated(id,String.valueOf(moneys),groupId);
         //异步发送给服务e
         notifyService.distributeUpdatee(id,String.valueOf(moneys),groupId);
 
-        return i > 0;
+        return true;
     }
 }

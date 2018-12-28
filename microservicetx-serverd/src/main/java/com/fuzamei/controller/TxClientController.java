@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.sql.SQLException;
 import java.util.concurrent.Exchanger;
+import java.util.concurrent.TimeoutException;
 
 /**
  * @author ylx
@@ -32,6 +33,7 @@ public class TxClientController {
     @PostMapping("/decide/{txId}/{flag}")
     public String decideConnection(@PathVariable(value = "txId") String txId,
                                    @PathVariable(value = "flag") String flag) {
+        log.info("D服务被TX-MANAGER通知");
         Exchanger<String> exchanger = TxClient.getExchanger(txId);
         if(exchanger == null){
             return ResponseEnum.FAIL.getName();
@@ -47,8 +49,10 @@ public class TxClientController {
             }else{
                 throw new RuntimeException("flag类型错误");
             }
-        }catch (Exception e){
+        }catch (InterruptedException | TimeoutException e){
             e.printStackTrace();
+            //出异常删除exchangeMap中的exchanger
+            TxClient.removeExchanger(txId);
             return ResponseEnum.FAIL.getName();
         }
         return ResponseEnum.SUCCESS.getName();
