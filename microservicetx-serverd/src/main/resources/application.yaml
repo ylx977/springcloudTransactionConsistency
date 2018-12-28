@@ -1,5 +1,5 @@
 server:
-  port: 10006 #指定该Eureka实例的端口号
+  port: 10004 #指定该Eureka实例的端口号:
 eureka:
   instance:
     prefer-ip-address: true #是否显示主机的ip
@@ -9,6 +9,6 @@ eureka:
       defaultZone: http://admin:123456@localhost:10000/eureka/ #指定Eureka服务端地址
 spring:
   application:
-    name: tx-manager #指定应用名称
+    name: service-d #指定应用名称
   profiles:
     active: @spring.profiles.active@

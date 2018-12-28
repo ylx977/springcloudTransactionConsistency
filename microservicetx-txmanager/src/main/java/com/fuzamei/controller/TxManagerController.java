@@ -4,9 +4,7 @@ import com.fuzamei.constants.RedisPrefix;
 import com.fuzamei.constants.ServiceName;
 import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.enums.TypeEnum;
-import com.fuzamei.txClient.ServiceaClient;
-import com.fuzamei.txClient.ServicebClient;
-import com.fuzamei.txClient.ServicecClient;
+import com.fuzamei.txClient.*;
 import com.fuzamei.utils.RedisUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,16 +28,22 @@ public class TxManagerController {
     private final ServiceaClient serviceaClient;
     private final ServicebClient servicebClient;
     private final ServicecClient servicecClient;
+    private final ServicedClient servicedClient;
+    private final ServiceeClient serviceeClient;
 
     @Autowired
     public TxManagerController(RedisUtils redisUtils,
                                ServiceaClient serviceaClient,
                                ServicebClient servicebClient,
-                               ServicecClient servicecClient) {
+                               ServicecClient servicecClient,
+                               ServicedClient servicedClient,
+                               ServiceeClient serviceeClient) {
         this.redisUtils = redisUtils;
         this.serviceaClient = serviceaClient;
         this.servicebClient = servicebClient;
         this.servicecClient = servicecClient;
+        this.servicedClient = servicedClient;
+        this.serviceeClient = serviceeClient;
     }
 
     /**
@@ -70,7 +74,7 @@ public class TxManagerController {
         int index  = 0;
         Map<String, String> map;
         while(true){
-            if(index > 100){
+            if(index > 500){
                 return ResponseEnum.SUCCESS.getName();
             }
             map = redisUtils.hgetAll(RedisPrefix.TX_GROUP + groupId);
@@ -78,6 +82,10 @@ public class TxManagerController {
                 index++;
             } else if(map.size() == serviceCount){
                 break;
+            } else{
+                //如果超时还未获取全
+                sendTypeToService(map,groupId,TypeEnum.NO.getName());
+                return ResponseEnum.SUCCESS.getName();
             }
             try {
                 Thread.sleep(20);
@@ -118,6 +126,12 @@ public class TxManagerController {
             }
             if(ServiceName.SERVICE_C.equals(entry.getKey())){
                 servicecClient.decideConnection(groupId,type);
+            }
+            if(ServiceName.SERVICE_D.equals(entry.getKey())){
+                servicedClient.decideConnection(groupId,type);
+            }
+            if(ServiceName.SERVICE_E.equals(entry.getKey())){
+                serviceeClient.decideConnection(groupId,type);
             }
         }
     }

@@ -34,7 +34,7 @@ public class AserviceImpl implements Aservice{
     }
 
     @Override
-    @TX(initial = true, serviceName = ServiceName.SERVICE_A, serviceCount = 3)
+    @TX(initial = true, serviceName = ServiceName.SERVICE_A, serviceCount = 5)
     public boolean updateMoneya(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = amapper.updateMoneya(id, moneys, time);

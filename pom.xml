@@ -21,6 +21,8 @@
         <module>microservicetx-servera</module>
         <module>microservicetx-serverb</module>
         <module>microservicetx-serverc</module>
+        <module>microservicetx-serverd</module>
+        <module>microservicetx-servere</module>
         <module>microservicetx-txmanager</module>
         <module>microservicetx-common</module>
     </modules>
