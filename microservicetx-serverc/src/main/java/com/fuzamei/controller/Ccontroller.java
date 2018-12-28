@@ -1,5 +1,6 @@
 package com.fuzamei.controller;
 
+import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.service.Cservice;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,8 +27,13 @@ public class Ccontroller {
                                    @PathVariable(value = "money") String money,
                                    @PathVariable(value = "groupId") String groupId){
         Double moneys = Double.parseDouble(money);
-        boolean success = cservice.updateMoneyb(id,moneys,groupId);
-        return success ? "success" : "fail";
+        try {
+            boolean success = cservice.updateMoneyc(id,moneys,groupId);
+            return success ? ResponseEnum.SUCCESS.getName() : ResponseEnum.FAIL.getName();
+        }catch (Exception e){
+            e.printStackTrace();
+            return ResponseEnum.FAIL.getName();
+        }
     }
 
 }

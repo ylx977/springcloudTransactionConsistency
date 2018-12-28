@@ -1,5 +1,6 @@
 package com.fuzamei.controller;
 
+import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.service.Bservice;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,11 +31,10 @@ public class Bcontroller {
         Double moneys = Double.parseDouble(money);
         try {
             boolean success = bservice.updateMoneyb(id,moneys,groupId);
-            log.info(success+"");
-            return success ? "success" : "fail";
+            return success ? ResponseEnum.SUCCESS.getName() : ResponseEnum.FAIL.getName();
         }catch (Exception e){
             e.printStackTrace();
-            return "fail";
+            return ResponseEnum.FAIL.getName();
         }
     }
 

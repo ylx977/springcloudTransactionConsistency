@@ -5,6 +5,6 @@ package com.fuzamei.service;
  */
 public interface Cservice {
 
-    boolean updateMoneyb(String id, Double moneys, String groupId);
+    boolean updateMoneyc(String id, Double moneys, String groupId);
 
 }

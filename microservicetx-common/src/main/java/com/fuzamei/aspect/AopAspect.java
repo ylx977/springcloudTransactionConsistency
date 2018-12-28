@@ -1,6 +1,7 @@
 package com.fuzamei.aspect;
 
 import com.fuzamei.annotations.TX;
+import com.fuzamei.enums.TypeEnum;
 import com.fuzamei.managerClient.TxManagerClient;
 import com.fuzamei.txclient.TxClient;
 import lombok.extern.slf4j.Slf4j;
@@ -18,6 +19,7 @@ import org.springframework.transaction.support.DefaultTransactionDefinition;
 import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.util.concurrent.Exchanger;
 
 /**
  * Created by ylx on 2018/12/14.
@@ -29,14 +31,12 @@ public class AopAspect {
 
     private final DataSourceTransactionManager dataSourceTransactionManager;
     private final TxManagerClient txManagerClient;
-    private final DataSource dataSource;
+
     @Autowired
     public AopAspect(DataSourceTransactionManager dataSourceTransactionManager,
-                     TxManagerClient txManagerClient,
-                     DataSource dataSource) {
+                     TxManagerClient txManagerClient) {
         this.dataSourceTransactionManager = dataSourceTransactionManager;
         this.txManagerClient = txManagerClient;
-        this.dataSource = dataSource;
     }
 
     @Pointcut(value = "@annotation(tx)")
@@ -48,43 +48,76 @@ public class AopAspect {
         log.info("环绕通知之开始");
         String serviceName = tx.serviceName();
         Object[] args = joinPoint.getArgs();
-        String groupId = (String) args[2];
+        final String groupId = (String) args[2];
 
         DefaultTransactionDefinition def = new DefaultTransactionDefinition();
         // 事物隔离级别，开启新事务，这样会比较安全些。
         def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         // 获得事务状态
         TransactionStatus status = dataSourceTransactionManager.getTransaction(def);
-        Connection connection = DataSourceUtils.getConnection(dataSource);
-        connection.setAutoCommit(false);
+
+        //创建exchange对象，用于线程之间通信
+        Exchanger<String> exchanger = new Exchanger<String>();
+        //全局变量中存放exchanger，让其它线程获取该exchanger
+        TxClient.putExchanger(groupId, exchanger);
         try {
             Object proceed = joinPoint.proceed();
             if(proceed.equals(Boolean.TRUE)){
-                txManagerClient.createTxGroup(groupId,serviceName,"OK");
+                //实际方法返回是true说明事务完成
+                txManagerClient.createTxGroup(groupId,serviceName, TypeEnum.OK.getName());
             }else{
-                txManagerClient.createTxGroup(groupId,serviceName,"NO");
+                //实际方法返回是false说明事务完成
+                txManagerClient.createTxGroup(groupId,serviceName, TypeEnum.NO.getName());
             }
             return proceed;
         } catch (Throwable e) {
             log.error("修改数据库出现异常，回滚数据");
             e.printStackTrace();
-            txManagerClient.createTxGroup(groupId,serviceName,"NO");
+            txManagerClient.createTxGroup(groupId,serviceName,TypeEnum.NO.getName());
             return false;
         }finally {
-            TxClient.putConnection(groupId,connection);
+            //如果是发起事务组的，就调用tx-manager接口通知所有挂起事务的服务是提交事务还是回滚事务
+            if(tx.initial()){
+                final int count = tx.serviceCount();
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        txManagerClient.judgeTx(groupId,String.valueOf(count));
+                    }
+                }).start();
+
+            }
             log.info("环绕通知之结束");
+            String receiveResult;
+            try {
+                //线程处于阻塞等待状态
+                receiveResult = exchanger.exchange("GET");
+                log.info("服务从exchanger获取结果: {}", receiveResult);
+                if(TypeEnum.OK.getName().equals(receiveResult)){
+                    //成功则提交事务
+                    dataSourceTransactionManager.commit(status);
+                }else{
+                    //失败则回滚事务
+                    dataSourceTransactionManager.rollback(status);
+                }
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+                //出现异常则回滚事务
+                dataSourceTransactionManager.rollback(status);
+            }
         }
     }
 
-    @AfterReturning(value = "serviceStatistics(tx)")
-    public void doAfterReturning(JoinPoint joinPoint, TX tx){
-        if(tx.initial()){
-            log.info("最后处理所有事务操作");
-            Object[] args = joinPoint.getArgs();
-            String groupId = (String) args[2];
-            txManagerClient.judgeTx(groupId);
-        }
-    }
+//    @AfterReturning(value = "serviceStatistics(tx)")
+//    public void doAfterReturning(JoinPoint joinPoint, TX tx){
+//        //如果是发起事务组的，就调用tx-manager接口通知所有挂起事务的服务是提交事务还是回滚事务
+//        if(tx.initial()){
+//            log.info("最后处理所有事务操作");
+//            Object[] args = joinPoint.getArgs();
+//            String groupId = (String) args[2];
+//            txManagerClient.judgeTx(groupId);
+//        }
+//    }
 
 
 //    @Around(value = "serviceStatistics(tx)")

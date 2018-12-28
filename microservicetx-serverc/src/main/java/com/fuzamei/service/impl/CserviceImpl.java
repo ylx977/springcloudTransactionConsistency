@@ -1,6 +1,7 @@
 package com.fuzamei.service.impl;
 
 import com.fuzamei.annotations.TX;
+import com.fuzamei.constants.ServiceName;
 import com.fuzamei.mapper.Cmapper;
 import com.fuzamei.service.Cservice;
 import org.springframework.stereotype.Service;
@@ -18,11 +19,10 @@ public class CserviceImpl implements Cservice {
     }
 
     @Override
-    @TX(serviceName = "SERVICEC")
-    public boolean updateMoneyb(String id, Double moneys, String groupId) {
+    @TX(serviceName = ServiceName.SERVICE_C)
+    public boolean updateMoneyc(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = cmapper.updateMoneyc(id, moneys, time);
-        int x = 1/0;
         return i > 0;
     }
 }

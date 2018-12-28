@@ -2,7 +2,7 @@ spring:
   profiles:
     active: @spring.profiles.active@
   application:
-    name: serverb #指定应用名称
+    name: service-b #指定应用名称
 server:
   port: 10002 #指定该Eureka实例的端口号:
 eureka:

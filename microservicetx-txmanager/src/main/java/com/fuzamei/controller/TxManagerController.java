@@ -1,5 +1,9 @@
 package com.fuzamei.controller;
 
+import com.fuzamei.constants.RedisPrefix;
+import com.fuzamei.constants.ServiceName;
+import com.fuzamei.enums.ResponseEnum;
+import com.fuzamei.enums.TypeEnum;
 import com.fuzamei.txClient.ServiceaClient;
 import com.fuzamei.txClient.ServicebClient;
 import com.fuzamei.txClient.ServicecClient;
@@ -14,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 /**
+ * @author ylx
  * Created by ylx on 2018/12/26.
  */
 @Slf4j
@@ -21,19 +26,26 @@ import java.util.Map;
 @RequestMapping("/txmanage")
 public class TxManagerController {
 
+    private final RedisUtils redisUtils;
+    private final ServiceaClient serviceaClient;
+    private final ServicebClient servicebClient;
+    private final ServicecClient servicecClient;
+
     @Autowired
-    private RedisUtils redisUtils;
-    @Autowired
-    private ServiceaClient serviceaClient;
-    @Autowired
-    private ServicebClient servicebClient;
-    @Autowired
-    private ServicecClient servicecClient;
+    public TxManagerController(RedisUtils redisUtils,
+                               ServiceaClient serviceaClient,
+                               ServicebClient servicebClient,
+                               ServicecClient servicecClient) {
+        this.redisUtils = redisUtils;
+        this.serviceaClient = serviceaClient;
+        this.servicebClient = servicebClient;
+        this.servicecClient = servicecClient;
+    }
 
     /**
-     * 创建事务组标识
-     * @param groupId
-     * @param serviceName
+     * 创建事务组标识，接收来自各个服务的事务挂起后接收事务成功还是失败的接口
+     * @param groupId   事务组id号
+     * @param serviceName   服务名
      * @param type OK表示事务成功 NO表示事务失败
      * @return
      */
@@ -41,21 +53,42 @@ public class TxManagerController {
     public String createOKTxGroup(@PathVariable(value = "groupId") String groupId,
                                 @PathVariable(value = "serviceName") String serviceName,
                                 @PathVariable(value = "type") String type){
-        boolean create = redisUtils.hset("TX_GROUP:" + groupId, serviceName, type);
-        return create ? "success" : "false";
+        //将每个服务的事务状态存入redis中
+        boolean create = redisUtils.hset(RedisPrefix.TX_GROUP + groupId, serviceName, type);
+        return create ? ResponseEnum.SUCCESS.getName() : ResponseEnum.FAIL.getName();
     }
 
-
-    @PostMapping("/judgeTx/{groupId}")
-    public String judgeTx(@PathVariable(value = "groupId") String groupId){
-        Map<String, String> map = redisUtils.hgetAll("TX_GROUP:" + groupId);
-        if(map.size() == 0){
-            return "success";
+    /**
+     * 由事务发起方最终调用txManager这个接口，并最终判断是否对各个挂起的事务进行提交还是回滚
+     * @param groupId   事务组id号
+     * @return
+     */
+    @PostMapping("/judgeTx/{groupId}/{count}")
+    public String judgeTx(@PathVariable(value = "groupId") String groupId,
+                          @PathVariable(value = "count") String count){
+        int serviceCount = Integer.parseInt(count);
+        int index  = 0;
+        Map<String, String> map;
+        while(true){
+            if(index > 100){
+                return ResponseEnum.SUCCESS.getName();
+            }
+            map = redisUtils.hgetAll(RedisPrefix.TX_GROUP + groupId);
+            if(map.size() < serviceCount){
+                index++;
+            } else if(map.size() == serviceCount){
+                break;
+            }
+            try {
+                Thread.sleep(20);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
 
         boolean flag = true;
         for(Map.Entry<String,String> entry : map.entrySet()){
-            if("NO".equals(entry.getValue())){
+            if(TypeEnum.NO.getName().equals(entry.getValue())){
                 flag = false;
                 break;
             }
@@ -63,33 +96,30 @@ public class TxManagerController {
 
         if(flag){
             //说明所有事务都成功了，全部通知提交事务
-            for(Map.Entry<String,String> entry : map.entrySet()){
-                if("SERVICEA".equals(entry.getKey())){
-                    serviceaClient.decideConnection(groupId,"OK");
-                }
-                if("SERVICEB".equals(entry.getKey())){
-                    servicebClient.decideConnection(groupId,"OK");
-                }
-                if("SERVICEC".equals(entry.getKey())){
-                    servicecClient.decideConnection(groupId,"OK");
-                }
-            }
+            sendTypeToService(map,groupId,TypeEnum.OK.getName());
         }else{
             //说明有部分事务失败了，全部通知回滚
-            for(Map.Entry<String,String> entry : map.entrySet()){
-                if("SERVICEA".equals(entry.getKey())){
-                    serviceaClient.decideConnection(groupId,"NO");
-                }
-                if("SERVICEB".equals(entry.getKey())){
-                    servicebClient.decideConnection(groupId,"NO");
-                }
-                if("SERVICEC".equals(entry.getKey())){
-                    servicecClient.decideConnection(groupId,"NO");
-                }
+            sendTypeToService(map,groupId,TypeEnum.NO.getName());
+        }
+        return ResponseEnum.SUCCESS.getName();
+    }
+
+
+    /**
+     * 给A,B,C服务通知到底是成功还是失败
+     */
+    private void sendTypeToService(Map<String, String> map, String groupId, String type){
+        for(Map.Entry<String,String> entry : map.entrySet()){
+            if(ServiceName.SERVICE_A.equals(entry.getKey())){
+                serviceaClient.decideConnection(groupId,type);
+            }
+            if(ServiceName.SERVICE_B.equals(entry.getKey())){
+                servicebClient.decideConnection(groupId,type);
+            }
+            if(ServiceName.SERVICE_C.equals(entry.getKey())){
+                servicecClient.decideConnection(groupId,type);
             }
         }
-        return "success";
-
     }
 
 

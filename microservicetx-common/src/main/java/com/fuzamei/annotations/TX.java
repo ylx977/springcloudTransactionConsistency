@@ -17,4 +17,6 @@ public @interface TX {
 
     String serviceName();
 
+    int serviceCount() default 0;
+
 }

@@ -3,8 +3,11 @@ package com.fuzamei.service.impl;
 import com.fuzamei.clients.BserviceClient;
 import com.fuzamei.clients.CserviceClient;
 import com.fuzamei.annotations.TX;
+import com.fuzamei.constants.ServiceName;
+import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.mapper.Amapper;
 import com.fuzamei.service.Aservice;
+import com.fuzamei.service.NotifyService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -18,17 +21,20 @@ public class AserviceImpl implements Aservice{
     private final Amapper amapper;
     private final BserviceClient bserviceClient;
     private final CserviceClient cserviceClient;
+    private final NotifyService notifyService;
 
     public AserviceImpl(Amapper amapper,
                         BserviceClient bserviceClient,
-                        CserviceClient cserviceClient) {
+                        CserviceClient cserviceClient,
+                        NotifyService notifyService) {
         this.amapper = amapper;
         this.bserviceClient = bserviceClient;
         this.cserviceClient = cserviceClient;
+        this.notifyService = notifyService;
     }
 
     @Override
-    @TX(initial = true,serviceName = "SERVICEA")
+    @TX(initial = true, serviceName = ServiceName.SERVICE_A, serviceCount = 3)
     public boolean updateMoneya(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = amapper.updateMoneya(id, moneys, time);
@@ -36,28 +42,10 @@ public class AserviceImpl implements Aservice{
             return false;
         }
 
-        String bresult;
-        try {
-            bresult = bserviceClient.distributeUpdate(id, String.valueOf(moneys), groupId);
-        }catch (Exception e){
-            log.error("调用serviceb出现异常"+e.getMessage());
-            return false;
-        }
-        if("fail".equals(bresult)){
-            return false;
-        }
-
-
-        String cresult;
-        try {
-            cresult = cserviceClient.distributeUpdate(id, String.valueOf(moneys),groupId);
-        }catch (Exception e){
-            log.error("调用servicec出现异常"+e.getMessage());
-            return false;
-        }
-        if("fail".equals(cresult)){
-            return false;
-        }
+        //异步通知b服务更新
+        notifyService.distributeUpdateb(id, String.valueOf(moneys), groupId);
+        //异步通知c服务更新
+        notifyService.distributeUpdatec(id, String.valueOf(moneys), groupId);
 
         return true;
     }

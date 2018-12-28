@@ -9,6 +9,6 @@ eureka:
       defaultZone: http://admin:123456@localhost:10000/eureka/ #指定Eureka服务端地址
 spring:
   application:
-    name: serverc #指定应用名称
+    name: service-c #指定应用名称
   profiles:
     active: @spring.profiles.active@
