@@ -1,25 +1,25 @@
 package com.fuzamei.aspect;
 
 import com.fuzamei.annotations.TX;
+import com.fuzamei.constants.TimeOut;
 import com.fuzamei.enums.TypeEnum;
 import com.fuzamei.managerClient.TxManagerClient;
 import com.fuzamei.txclient.TxClient;
 import lombok.extern.slf4j.Slf4j;
-import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.concurrent.Exchanger;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 /**
  * Created by ylx on 2018/12/14.
@@ -31,12 +31,15 @@ public class AopAspect {
 
     private final DataSourceTransactionManager dataSourceTransactionManager;
     private final TxManagerClient txManagerClient;
+    private final ExecutorService executorService;
 
     @Autowired
     public AopAspect(DataSourceTransactionManager dataSourceTransactionManager,
-                     TxManagerClient txManagerClient) {
+                     TxManagerClient txManagerClient,
+                     ExecutorService executorService) {
         this.dataSourceTransactionManager = dataSourceTransactionManager;
         this.txManagerClient = txManagerClient;
+        this.executorService = executorService;
     }
 
     @Pointcut(value = "@annotation(tx)")
@@ -79,16 +82,14 @@ public class AopAspect {
             //如果是发起事务组的，就调用tx-manager接口通知所有挂起事务的服务是提交事务还是回滚事务
             if(tx.initial()){
                 final int count = tx.serviceCount();
-                new Thread(()->
-                        txManagerClient.judgeTx(groupId,String.valueOf(count))
-                ).start();
-
+                //异步调用让tx-manager去判断并通知所有服务
+                executorService.execute(()-> txManagerClient.judgeTx(groupId,String.valueOf(count)));
             }
             log.info("环绕通知之结束");
             String receiveResult;
             try {
                 //线程处于阻塞等待状态
-                receiveResult = exchanger.exchange("GET");
+                receiveResult = exchanger.exchange("GET", TimeOut.MAX_WAIT_EXCHANGE, TimeOut.MAX_WAIT_EXCHANGE_UNIT);
                 log.info("服务从exchanger获取结果: {}", receiveResult);
                 if(TypeEnum.OK.getName().equals(receiveResult)){
                     //成功则提交事务
@@ -97,7 +98,7 @@ public class AopAspect {
                     //失败则回滚事务
                     dataSourceTransactionManager.rollback(status);
                 }
-            } catch (InterruptedException e) {
+            } catch (InterruptedException | TimeoutException e) {
                 e.printStackTrace();
                 //出现异常则回滚事务
                 dataSourceTransactionManager.rollback(status);

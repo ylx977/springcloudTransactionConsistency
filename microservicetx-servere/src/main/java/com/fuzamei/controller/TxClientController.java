@@ -1,5 +1,6 @@
 package com.fuzamei.controller;
 
+import com.fuzamei.constants.TimeOut;
 import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.enums.TypeEnum;
 import com.fuzamei.txclient.TxClient;
@@ -39,10 +40,10 @@ public class TxClientController {
             if(TypeEnum.OK.getName().equals(flag)){
                 log.info("E服务准备将事务提交上去");
                 //通知挂起的线程消息
-                exchanger.exchange(flag);
+                exchanger.exchange(flag, TimeOut.MAX_WAIT_EXCHANGE, TimeOut.MAX_WAIT_EXCHANGE_UNIT);
             }else if(TypeEnum.NO.getName().equals(flag)){
                 log.info("E服务准备将事务回滚");
-                exchanger.exchange(flag);
+                exchanger.exchange(flag, TimeOut.MAX_WAIT_EXCHANGE, TimeOut.MAX_WAIT_EXCHANGE_UNIT);
             }else{
                 throw new RuntimeException("flag类型错误");
             }
