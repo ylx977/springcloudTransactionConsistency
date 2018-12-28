@@ -79,12 +79,9 @@ public class AopAspect {
             //如果是发起事务组的，就调用tx-manager接口通知所有挂起事务的服务是提交事务还是回滚事务
             if(tx.initial()){
                 final int count = tx.serviceCount();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        txManagerClient.judgeTx(groupId,String.valueOf(count));
-                    }
-                }).start();
+                new Thread(()->
+                        txManagerClient.judgeTx(groupId,String.valueOf(count))
+                ).start();
 
             }
             log.info("环绕通知之结束");
