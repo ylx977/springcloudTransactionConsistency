@@ -41,6 +41,8 @@ public class TxClientController {
                                    @PathVariable(value = "flag") String flag) {
         log.info("A服务被TX-MANAGER通知");
         Exchanger<String> exchanger = TxClient.getExchanger(txId);
+
+        //有可能被通知的当前服务并没有exchanger，直接返回fail即可，并不会影响程序
         if(exchanger == null){
             return ResponseEnum.FAIL.getName();
         }
