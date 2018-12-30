@@ -13,7 +13,7 @@ A,B,C,D,E 服务每次service方法中事务部分结束后，并不会真正将
 
 具体流程图如下所示：
 
-![Image text](https://raw.githubusercontent.com/ylx977/img_folder/master/distributionTx.png)
+![Image text](https://raw.githubusercontent.com/ylx977/img_folder/master/distributionTx2.png)
 
 
 模拟起见，在本地数据库创建表
