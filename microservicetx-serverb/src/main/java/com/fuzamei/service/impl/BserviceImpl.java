@@ -28,7 +28,7 @@ public class BserviceImpl implements Bservice {
     }
 
     @Override
-    @TX(serviceName = ServiceName.SERVICE_B)
+    @TX(serviceName = ServiceName.SERVICE_B,serviceCount = 5)
     public boolean updateMoneyb(String id, Double moneys,String groupId) {
         long time = System.currentTimeMillis();
         int i = bmapper.updateMoneyb(id, moneys, time);

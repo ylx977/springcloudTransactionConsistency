@@ -20,13 +20,15 @@ public class EserviceImpl implements Eservice {
     }
 
     @Override
-    @TX(serviceName = ServiceName.SERVICE_E)
+    @TX(serviceName = ServiceName.SERVICE_E,serviceCount = 5)
     public boolean updateMoneye(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = emapper.updateMoneye(id, moneys, time);
         if(i == 0){
             return false;
         }
+
+//        int x = 1/0;
 
         //todo 可做其它业务或调用其它微服务的事务
 

@@ -1,10 +1,8 @@
 package com.fuzamei.controller;
 
 import com.fuzamei.constants.RedisPrefix;
-import com.fuzamei.constants.ServiceName;
 import com.fuzamei.enums.ResponseEnum;
 import com.fuzamei.enums.TypeEnum;
-import com.fuzamei.txClient.*;
 import com.fuzamei.utils.RedisUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,25 +23,10 @@ import java.util.Map;
 public class TxManagerController {
 
     private final RedisUtils redisUtils;
-    private final ServiceaClient serviceaClient;
-    private final ServicebClient servicebClient;
-    private final ServicecClient servicecClient;
-    private final ServicedClient servicedClient;
-    private final ServiceeClient serviceeClient;
 
     @Autowired
-    public TxManagerController(RedisUtils redisUtils,
-                               ServiceaClient serviceaClient,
-                               ServicebClient servicebClient,
-                               ServicecClient servicecClient,
-                               ServicedClient servicedClient,
-                               ServiceeClient serviceeClient) {
+    public TxManagerController(RedisUtils redisUtils) {
         this.redisUtils = redisUtils;
-        this.serviceaClient = serviceaClient;
-        this.servicebClient = servicebClient;
-        this.servicecClient = servicecClient;
-        this.servicedClient = servicedClient;
-        this.serviceeClient = serviceeClient;
     }
 
     /**
@@ -65,7 +48,7 @@ public class TxManagerController {
     /**
      * 由事务发起方最终调用txManager这个接口，并最终判断是否对各个挂起的事务进行提交还是回滚
      * @param groupId   事务组id号
-     * @return
+     * @return SUCCESS表示事务是成功的，可以提交    FAIL表示失败，进行回滚
      */
     @PostMapping("/judgeTx/{groupId}/{count}")
     public String judgeTx(@PathVariable(value = "groupId") String groupId,
@@ -81,6 +64,10 @@ public class TxManagerController {
         long sumWait = 0;
         while(true){
             map = redisUtils.hgetAll(RedisPrefix.TX_GROUP + groupId);
+            if(map.size() == 0){
+                //如果没有查到说明事务组根本不存在，直接返回失败
+                return ResponseEnum.FAIL.getName();
+            }
             log.info("查询redis{}次,当前需要等待时间{}ms,累计等待时间{}ms",index+1,initialWait,sumWait);
             if(map.size() < serviceCount){
                 index++;
@@ -91,9 +78,8 @@ public class TxManagerController {
             for(Map.Entry<String,String> entry : map.entrySet()){
                 if(TypeEnum.NO.getName().equals(entry.getValue())){
                     //只要有服务有一个是失败的直接通知所有服务回滚事务
-                    log.info("检测到有服务的事务已经失败,直接通知所有服务回滚事务");
-                    sendTypeToService(map,groupId,TypeEnum.NO.getName());
-                    return ResponseEnum.SUCCESS.getName();
+                    log.info("检测到有服务的事务已经失败,直接通知回滚事务");
+                    return ResponseEnum.FAIL.getName();
                 }
             }
 
@@ -101,8 +87,7 @@ public class TxManagerController {
             if(sumWait > totalWait){
                 //如果超时还未获取全
                 log.info("tx-manager超时还未获取全所有事务信息");
-                sendTypeToService(map,groupId,TypeEnum.NO.getName());
-                return ResponseEnum.SUCCESS.getName();
+                return ResponseEnum.FAIL.getName();
             }
 
             try {
@@ -125,39 +110,7 @@ public class TxManagerController {
             }
         }
 
-        if(flag){
-            //说明所有事务都成功了，全部通知提交事务
-            sendTypeToService(map,groupId,TypeEnum.OK.getName());
-        }else{
-            //说明有部分事务失败了，全部通知回滚
-            sendTypeToService(map,groupId,TypeEnum.NO.getName());
-        }
-        return ResponseEnum.SUCCESS.getName();
+        return flag ? ResponseEnum.SUCCESS.getName() : ResponseEnum.FAIL.getName();
     }
-
-
-    /**
-     * 给A,B,C服务通知到底是成功还是失败
-     */
-    private void sendTypeToService(Map<String, String> map, String groupId, String type){
-        for(Map.Entry<String,String> entry : map.entrySet()){
-            if(ServiceName.SERVICE_A.equals(entry.getKey())){
-                serviceaClient.decideConnection(groupId,type);
-            }
-            if(ServiceName.SERVICE_B.equals(entry.getKey())){
-                servicebClient.decideConnection(groupId,type);
-            }
-            if(ServiceName.SERVICE_C.equals(entry.getKey())){
-                servicecClient.decideConnection(groupId,type);
-            }
-            if(ServiceName.SERVICE_D.equals(entry.getKey())){
-                servicedClient.decideConnection(groupId,type);
-            }
-            if(ServiceName.SERVICE_E.equals(entry.getKey())){
-                serviceeClient.decideConnection(groupId,type);
-            }
-        }
-    }
-
 
 }

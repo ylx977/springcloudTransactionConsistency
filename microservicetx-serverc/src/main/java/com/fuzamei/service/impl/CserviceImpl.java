@@ -24,7 +24,7 @@ public class CserviceImpl implements Cservice {
     }
 
     @Override
-    @TX(serviceName = ServiceName.SERVICE_C)
+    @TX(serviceName = ServiceName.SERVICE_C,serviceCount = 5)
     public boolean updateMoneyc(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = cmapper.updateMoneyc(id, moneys, time);
@@ -32,6 +32,8 @@ public class CserviceImpl implements Cservice {
         if(i == 0){
             return false;
         }
+
+//        int x = 1/0;
 
         //异步发送给服务d
         notifyService.distributeUpdated(id,String.valueOf(moneys),groupId);

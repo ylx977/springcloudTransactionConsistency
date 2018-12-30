@@ -19,17 +19,11 @@ import org.springframework.stereotype.Service;
 public class AserviceImpl implements Aservice{
 
     private final Amapper amapper;
-    private final BserviceClient bserviceClient;
-    private final CserviceClient cserviceClient;
     private final NotifyService notifyService;
 
     public AserviceImpl(Amapper amapper,
-                        BserviceClient bserviceClient,
-                        CserviceClient cserviceClient,
                         NotifyService notifyService) {
         this.amapper = amapper;
-        this.bserviceClient = bserviceClient;
-        this.cserviceClient = cserviceClient;
         this.notifyService = notifyService;
     }
 

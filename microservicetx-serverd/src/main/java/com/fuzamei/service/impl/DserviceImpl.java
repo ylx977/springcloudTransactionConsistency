@@ -20,7 +20,7 @@ public class DserviceImpl implements Dservice {
     }
 
     @Override
-    @TX(serviceName = ServiceName.SERVICE_D)
+    @TX(serviceName = ServiceName.SERVICE_D,serviceCount = 5)
     public boolean updateMoneyd(String id, Double moneys, String groupId) {
         long time = System.currentTimeMillis();
         int i = dmapper.updateMoneyd(id, moneys, time);
