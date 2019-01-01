@@ -35,5 +35,3 @@ CREATE TABLE `......` (
 
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8;
 
-
-线程之间通信采用java.util.concurrent.Exchanger这个类的exchange方法进行信息交互
